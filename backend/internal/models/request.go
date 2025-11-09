@@ -7,4 +7,7 @@ type Request struct {
 	Phone       string `gorm:"not null" json:"phone"`
 	Email       string `json:"email,omitempty"`
 	Description string `json:"description,omitempty"`
+	ProductID   *uint  `json:"product_id,omitempty"`
+
+	Product *Product `json:"product,omitempty" gorm:"foreignKey:ProductID"`
 }

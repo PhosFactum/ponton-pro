@@ -1,4 +1,3 @@
-// internal/models/service.go:
 package models
 
 // Product - модель продукта (понтон, лодка)

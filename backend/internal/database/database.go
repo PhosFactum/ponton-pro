@@ -2,6 +2,7 @@ package database
 
 import (
 	"log"
+	"os"
 
 	"github.com/PhosFactum/TechnoLotos/backend/internal/config"
 	"github.com/PhosFactum/TechnoLotos/backend/internal/models"
@@ -20,6 +21,12 @@ func Connect(cfg *config.Config) error {
 		dbName = "/var/lib/TechnoLotos/production.db"
 	} else {
 		dbName = "lotos.db"
+
+		// Удаляем тестовую БД при каждому запуске development
+		if _, err := os.Stat(dbName); err == nil {
+			log.Println("Удаляем старую тестовую БД...")
+			os.Remove(dbName)
+		}
 	}
 
 	// SQLite - идеальная легковесная БД для SPA
