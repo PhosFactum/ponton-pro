@@ -1,72 +1,186 @@
-// ЗАМЕНИ ВЕСЬ файл app.js на этот упрощенный:
+// frontend/js/app.js
 const API_BASE = 'http://localhost:8080/api';
 
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Page loaded, testing API...');
-    testAPI();
+document.addEventListener('DOMContentLoaded', () => {
+  initUI();
+  fetchProducts();
 });
 
-async function testAPI() {
-    try {
-        console.log('🔍 Testing connection to:', API_BASE + '/products');
-        
-        const response = await fetch(API_BASE + '/products', {
-            method: 'GET',
-            mode: 'cors',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        });
-        
-        console.log('📡 Response status:', response.status);
-        console.log('📡 Response headers:', response.headers);
-        
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        console.log('✅ SUCCESS! Data:', data);
-        
-        if (data && data.data) {
-            displayProducts(data.data);
-        } else {
-            document.getElementById('productsList').innerHTML = 
-                '<div class="error">Нет данных о продуктах</div>';
-        }
-        
-    } catch (error) {
-        console.error('❌ ERROR:', error);
-        document.getElementById('productsList').innerHTML = 
-            `<div class="error">Ошибка: ${error.message}</div>`;
+function initUI() {
+  // Модал и форма
+  const modal = document.getElementById('orderModal');
+  const orderForm = document.getElementById('orderForm');
+  const closeBtn = document.querySelector('.close');
+
+  // Закрыть по кресту
+  closeBtn.addEventListener('click', closeOrderModal);
+
+  // Закрыть по клику вне контента
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeOrderModal();
+  });
+
+  // Esc — закрыть
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeOrderModal();
+  });
+
+  // Обработка отправки формы
+  orderForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await submitOrder();
+  });
+}
+
+async function fetchProducts() {
+  const list = document.getElementById('productsList');
+  list.innerHTML = '<div class="loading">Загрузка продуктов...</div>';
+
+  try {
+    const res = await fetch(`${API_BASE}/products`, {
+      method: 'GET',
+      mode: 'cors',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+    const payload = await res.json();
+
+    // Поддерживаем несколько форматов ответа (на всякий случай)
+    const products = payload.data ?? payload.products ?? payload;
+    if (!Array.isArray(products) || products.length === 0) {
+      list.innerHTML = '<div class="loading">Продуктов не найдено.</div>';
+      return;
     }
+
+    displayProducts(products);
+  } catch (err) {
+    console.error('Ошибка загрузки продуктов:', err);
+    document.getElementById('productsList').innerHTML =
+      `<div class="loading">Ошибка загрузки: ${escapeHtml(err.message)}</div>`;
+  }
 }
 
 function displayProducts(products) {
-    const html = products.map(product => `
-        <div class="product-card">
-            <h3>${product.title}</h3>
-            <p>${product.description}</p>
-            <button onclick="alert('Заказ продукта ${product.id}')">Заказать</button>
-        </div>
-    `).join('');
-    
-    document.getElementById('productsList').innerHTML = html;
+  const html = products.map(p => productCardHtml(p)).join('');
+  document.getElementById('productsList').innerHTML = html;
+
+  // Привязываем события "Заказать" (вешаем делегированно)
+  document.getElementById('productsList').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-order-id]');
+    if (!btn) return;
+    openOrderModal(btn.getAttribute('data-order-id'), btn.getAttribute('data-order-title'));
+  }, { once: false });
 }
 
-// Временные функции для кнопок
-function scrollToProducts() {
-    const element = document.getElementById('products');
-    if (element) {
-        element.scrollIntoView({ behavior: 'smooth' });
-        console.log('🔍 Scrolled to products');
-    }
+function productCardHtml(product) {
+  // Поля, которые могут быть у продукта: id, title, name, description, price, image
+  const id = product.id ?? product.ID ?? product.Id ?? '';
+  const title = escapeHtml(product.title ?? product.name ?? 'Без названия');
+  const description = escapeHtml(product.description ?? '');
+  const price = product.price !== undefined ? `Цена: ${escapeHtml(String(product.price))}` : '';
+
+  return `
+    <div class="product-card">
+      <h3>${title}</h3>
+      <p>${description}</p>
+      <p style="font-weight:600">${price}</p>
+      <button class="order-btn" data-order-id="${id}" data-order-title="${title}">Оставить заявку</button>
+    </div>
+  `;
 }
 
-function openOrderModal(id) {
-    alert('Открыть заказ продукта ' + id);
+function openOrderModal(productId, productTitle = '') {
+  const modal = document.getElementById('orderModal');
+  modal.style.display = 'block';
+  document.getElementById('productId').value = productId || '';
+  // Подставим в заголовок модалки (если есть)
+  const heading = modal.querySelector('h3');
+  if (heading) heading.textContent = productTitle ? `Оставить заявку — ${productTitle}` : 'Оставить заявку';
+  // Фокус на имя
+  setTimeout(() => {
+    const nameInput = document.getElementById('name');
+    if (nameInput) nameInput.focus();
+  }, 50);
 }
 
 function closeOrderModal() {
-    alert('Закрыть модальное окно');
+  const modal = document.getElementById('orderModal');
+  modal.style.display = 'none';
+  // очистим форму
+  document.getElementById('orderForm').reset();
+  document.getElementById('productId').value = '';
+}
+
+async function submitOrder() {
+  const productId = document.getElementById('productId').value;
+  const name = document.getElementById('name').value.trim();
+  const phone = document.getElementById('phone').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const description = document.getElementById('description').value.trim();
+
+  if (!name || !phone) {
+    showNotification('Имя и телефон — обязательны', 'error');
+    return;
+  }
+
+  const body = {
+    product_id: productId,
+    name,
+    phone,
+    email: email || undefined,
+    description: description || undefined
+  };
+
+  try {
+    const res = await fetch(`${API_BASE}/requests`, {
+      method: 'POST',
+      mode: 'cors',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    if (!res.ok) {
+      // Попробуем получить json с ошибкой
+      let errMsg = `HTTP ${res.status}`;
+      try {
+        const errJson = await res.json();
+        if (errJson && errJson.error) errMsg = errJson.error;
+        else if (errJson && typeof errJson === 'string') errMsg = errJson;
+      } catch (_) { /* ignore */ }
+      throw new Error(errMsg);
+    }
+
+    let data;
+    try { data = await res.json(); } catch (_) { data = null; }
+    showNotification('Заявка успешно отправлена!', 'success');
+    closeOrderModal();
+    console.log('Ответ сервера на создание заявки:', data);
+  } catch (err) {
+    console.error('Ошибка отправки заявки:', err);
+    showNotification(`Ошибка отправки: ${escapeHtml(err.message)}`, 'error');
+  }
+}
+
+function showNotification(text, type = 'success', timeout = 4000) {
+  const n = document.getElementById('notification');
+  n.textContent = text;
+  n.className = `notification ${type === 'error' ? 'error' : 'success'}`;
+  n.style.display = 'block';
+  if (n._hideTimeout) clearTimeout(n._hideTimeout);
+  n._hideTimeout = setTimeout(() => {
+    n.style.display = 'none';
+  }, timeout);
+}
+
+// Простая защита от XSS при вставке текста
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
 }
