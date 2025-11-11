@@ -34,6 +34,38 @@ body {
     font-weight: 400;
 }
 
+/* Шапка: Flex-раскладка */
+.header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+}
+
+.header-logo img {
+    height: 100px; /* регулируй по размеру логотипа */
+    object-fit: contain;
+    width: auto;
+    display: block;
+}
+
+.header-title {
+    text-align: center;
+    flex: 1;
+}
+
+.header-title h1,
+.header-title p {
+    margin: 0;
+}
+
+.header-phone {
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #555;
+    white-space: nowrap;
+}
+
 /* Приветственный блок */
 .hero {
     background: url("../images/0.jpg") center/cover no-repeat;
@@ -81,39 +113,53 @@ body {
     gap: 25px;
 }
 
-/* Карточка продукта */
+/* 🔑 КАРТОЧКА ПРОДУКТА — ОСНОВНОЕ ИЗМЕНЕНИЕ */
 .product-card {
     display: flex;
-    align-items: center;
     background: #fafafa;
     border-radius: 12px;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
     overflow: hidden;
-    height: 200px;
+    min-height: 220px; /* минимальная высота — достаточно для 1-2 строк описания */
 }
 
+/* Изображение: фиксированная ширина, высота = высоте карточки */
 .product-card img {
-    width: 50%;
+    width: 200px;
     height: 100%;
     object-fit: cover;
+    flex-shrink: 0;
 }
 
+/* Информация: flex-контейнер с column */
 .product-info {
     flex: 1;
     padding: 1.5rem;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
-    height: 100%;
+}
+
+/* Заголовок + описание — растягиваются, но текст не убегает */
+.product-info > div {
+    flex: 1;
 }
 
 .product-info h3 {
-    margin-top: 0;
+    margin: 0 0 0.75rem 0;
     font-size: 1.4rem;
     color: #333;
 }
 
-.order-btn {
+.product-info p {
+    margin: 0;
+    line-height: 1.5;
+    color: #555;
+}
+
+/* 🔑 Кнопка — фиксирована внизу с отступом в ~1 строку (1.5em) */
+.product-info .order-btn {
+    margin-top: 1.5em; /* ← ровно одна строка текста от последней строки описания */
+    align-self: flex-start;
     background: #0077ff;
     color: white;
     border: none;
@@ -121,10 +167,10 @@ body {
     border-radius: 8px;
     cursor: pointer;
     transition: background 0.2s;
-    align-self: flex-start;
+    font-size: 1rem;
 }
 
-.order-btn:hover {
+.product-info .order-btn:hover {
     background: #005dd1;
 }
 
@@ -262,7 +308,6 @@ body {
 .social-icons img {
     width: 26px;
     height: 26px;
-    filter: brightness(0) invert(1);
     transition: transform 0.2s;
 }
 
@@ -297,19 +342,26 @@ body {
         margin-top: 30px;
     }
 
+    /* Мобилка: колонка, кнопка на всю ширину */
     .product-card {
         flex-direction: column;
-        height: auto;
+        min-height: auto;
     }
 
     .product-card img {
         width: 100%;
-        height: 160px;
-        object-fit: cover;
+        height: 180px;
+        flex-shrink: 0;
     }
 
     .product-info {
         padding: 1rem;
+    }
+
+    .product-info .order-btn {
+        margin-top: 1.25em;
+        width: 100%;
+        align-self: stretch;
     }
 
     .footer-content {
