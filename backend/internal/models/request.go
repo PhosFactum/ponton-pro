@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 // Request - заявка от клиента
 type Request struct {
 	ID          uint   `gorm:"primaryKey" json:"id"`
@@ -9,5 +11,6 @@ type Request struct {
 	Description string `json:"description,omitempty"`
 	ProductID   *uint  `json:"product_id,omitempty"`
 
-	Product *Product `json:"product,omitempty" gorm:"foreignKey:ProductID"`
+	Product   *Product  `json:"product,omitempty" gorm:"foreignKey:ProductID"`
+	CreatedAt time.Time `json:"create_at"`
 }

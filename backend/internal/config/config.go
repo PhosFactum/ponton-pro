@@ -6,6 +6,7 @@ type Config struct {
 	Port        string
 	DatabaseUrl string
 	Environment string
+	BotToken    string
 }
 
 // Load - загрузка конфигурации
@@ -14,6 +15,7 @@ func Load() *Config {
 		Port:        getEnv("PORT", "8080"),
 		DatabaseUrl: getEnv("DATABASE_URL", "lotos.db"),
 		Environment: getEnv("ENVIRONMENT", "development"),
+		BotToken:    getEnv("BOT_TOKEN", ""),
 	}
 }
 
