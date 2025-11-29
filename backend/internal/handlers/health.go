@@ -7,7 +7,7 @@ import (
 )
 
 // HealthCheck - проверка состояния API
-func HealthCheck(c *gin.Context) {
+func (h *Handler) HealthCheck(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"status":  "healthy",
 		"message": "API ТехноЛотос работает!",

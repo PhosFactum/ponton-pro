@@ -9,7 +9,7 @@ import (
 )
 
 // CreateRequest - создание новой заявки
-func CreateRequest(c *gin.Context) {
+func (h *Handler) CreateRequest(c *gin.Context) {
 	var input struct {
 		Name        string `json:"name" binding:"required"`
 		Phone       string `json:"phone" binding:"required"`
@@ -51,11 +51,13 @@ func CreateRequest(c *gin.Context) {
 		return
 	}
 
+	// Подгрузка данных о товаре для красивого вывода в ТГ
 	if input.ProductID != nil {
 		database.DB.Preload("Product").First(&request, request.ID)
 	}
 
 	// TODO: тут позже будет отправка уведомления
+	go h.bot.SendNewRequestNotification(h.cfg.AdminChatID, request)
 
 	c.JSON(http.StatusCreated, gin.H{
 		"success": true,

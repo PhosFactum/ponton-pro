@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 
+	"github.com/PhosFactum/TechnoLotos/backend/internal/bot"
 	"github.com/PhosFactum/TechnoLotos/backend/internal/config"
 	"github.com/PhosFactum/TechnoLotos/backend/internal/database"
 	"github.com/PhosFactum/TechnoLotos/backend/internal/handlers"
@@ -13,24 +14,38 @@ import (
 )
 
 func main() {
-	// Загружаем конфигурацию
+	// 1. Загружаем конфигурацию
 	cfg := config.Load()
 	log.Printf("Launching in mode: %s", cfg.Environment)
 
-	// Подключаемся к БД
+	// 2. Подключаемся к БД
 	if err := database.Connect(cfg); err != nil {
 		log.Fatal("Error while connecting to DB:", err)
 	}
 
-	// Создаём таблицы
+	// 3. Миграции и сиды
 	if err := database.Migrate(); err != nil {
 		log.Fatal("Error while creating tables:", err)
 	}
-
-	// Добавляем тестовые данные
 	database.SeedTestData()
 
-	// Инициализируем роутер Gin
+	// 4. Инициализируем бота
+	if cfg.BotToken == "" {
+		log.Fatal("BOT_TOKEN is required on .env!")
+	}
+
+	tgBot, err := bot.NewBot(cfg.BotToken)
+	if err != nil {
+		log.Fatal("Error while creating telegram bot:", err)
+	}
+
+	log.Println("Starting Telegram Bot in background...")
+	go tgBot.Start() // Запускаем бота в отдельной горутине
+
+	// 5. Инициализируем хэндлеры (внедряем бота и конфиг)
+	h := handlers.NewHandler(tgBot, cfg)
+
+	// 6. Инициализируем роутер Gin
 	router := gin.Default()
 
 	// CORS для фронтенда
@@ -48,16 +63,16 @@ func main() {
 		c.Next()
 	})
 
-	// Логирование (на всякий случай)
+	// 7. Логирование и прочие подключения
 	router.Use(middleware.Logger())
 
-	// API-роуты
+	// 8. API-роуты
 	api := router.Group("/api")
 	{
-		api.GET("/", handlers.HealthCheck)
-		api.GET("/health", handlers.HealthCheck)
-		api.GET("/products", handlers.GetProducts)    // Каталог товаров
-		api.POST("/requests", handlers.CreateRequest) // Создание заявки
+		api.GET("/", h.HealthCheck)
+		api.GET("/health", h.HealthCheck)      // Проверка состояния сервера
+		api.GET("/products", h.GetProducts)    // Каталог товаров
+		api.POST("/requests", h.CreateRequest) // Создание заявки
 
 		// ВРЕМЕННЫЙ ЭНДПОЙНТ ДЛЯ ПРОСМОТРА ВСЕХ ЗАЯВОК
 		api.GET("/debug/requests", func(c *gin.Context) {

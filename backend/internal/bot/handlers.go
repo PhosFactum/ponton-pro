@@ -10,7 +10,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-const requestsPerPage = 5
+const requestsPerPage = 3
 
 // Ручка /start
 func (h *Handlers) handleStart(message *tgbotapi.Message) {
@@ -93,10 +93,12 @@ func (h *Handlers) handleRequests(message *tgbotapi.Message, page int) {
 
 	text += fmt.Sprintf("Страница %d из %d", page+1, totalPages)
 
-	// Создаём клавиатуру для пагинации
-	keyboard := h.createPaginationKeyboard(page, int(total))
-
-	h.bot.SendMessageWithKeyboard(message.Chat.ID, text, keyboard)
+	if totalPages > 1 {
+		keyboard := h.createPaginationKeyboard(page, int(total))
+		h.bot.SendMessageWithKeyboard(message.Chat.ID, text, keyboard)
+	} else {
+		h.bot.SendMessage(message.Chat.ID, text)
+	}
 }
 
 // Обработчик коллбэка для пагинации
@@ -139,7 +141,7 @@ func (h *Handlers) createPaginationKeyboard(currentPage int, totalItems int) tgb
 	// Кнопка "Вперёд"
 	if currentPage < maxPage-1 {
 		buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData("Вперёд ➡️",
-			fmt.Sprintf("requests_page_%d", currentPage-1)))
+			fmt.Sprintf("requests_page_%d", currentPage+1)))
 	}
 
 	if len(buttons) > 0 {

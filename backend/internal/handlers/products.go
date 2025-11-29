@@ -9,7 +9,7 @@ import (
 )
 
 // GetProducts - возвращает все продукты
-func GetProducts(c *gin.Context) {
+func (h *Handler) GetProducts(c *gin.Context) {
 	var products []models.Product
 	result := database.DB.Find(&products)
 
