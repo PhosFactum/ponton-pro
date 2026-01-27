@@ -1,3 +1,4 @@
+// AI-helped code
 package bot
 
 import (
@@ -10,37 +11,61 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
+// Количество заявок на странице
 const requestsPerPage = 3
 
 // Ручка /start
 func (h *Handlers) handleStart(message *tgbotapi.Message) {
-	text := `**🤖 Бот-помощник 'ТехноЛотоса'**
+	text := `**🤖 Приветствую! Я бот "ТехноЛотоса".**
 
-Доступные команды:
-/start - Вывести это руководство ещё раз
-/test - Проверить работу бота
-/requests - Показать последние заявки
+Я буду присылать сюда новые заявки с сайта.
+Нажмите кнопку внизу, чтобы открыть список заявок.`
 
-Для навигации по заявкам используйте кнопки 'Вперёд' и 'Назад'.`
+	// Создаем НИЖНЮЮ клавиатуру (Reply Keyboard)
+	keyboard := tgbotapi.NewReplyKeyboard(
+		tgbotapi.NewKeyboardButtonRow(
+			tgbotapi.NewKeyboardButton("📋 Заявки"),
+			tgbotapi.NewKeyboardButton("❓ Помощь"),
+		),
+	)
+	keyboard.ResizeKeyboard = true // Делаем кнопки компактными
 
-	h.bot.SendMessage(message.Chat.ID, text)
+	// Отправляем сообщение + клавиатуру
+	h.bot.SendMessageWithReplyKeyboard(message.Chat.ID, text, keyboard)
 }
 
 // Ручка /test
 func (h *Handlers) handleTest(message *tgbotapi.Message) {
-	text := "✅ Бот работает исправно, так как вы видите это сообщение!"
-	h.bot.SendMessage(message.Chat.ID, text)
+	h.bot.SendMessage(message.Chat.ID, "✅ Бот работает исправно!")
 }
 
-// Ручка /requests
+// Ручка /requests (вызывается командой или кнопкой "Заявки")
 func (h *Handlers) handleRequests(message *tgbotapi.Message, page int) {
+	// Это новое сообщение, не редактирование
+	h.sendOrEditRequests(message.Chat.ID, 0, page, false)
+}
+
+// handleRequestsCallback - пагинация по списку заявок
+func (h *Handlers) handleRequestsCallback(query *tgbotapi.CallbackQuery) {
+	data := query.Data
+	pageStr := data[14:] // "requests_page_123"
+	page, err := strconv.Atoi(pageStr)
+	if err != nil {
+		h.bot.SendMessage(query.Message.Chat.ID, "❌ Ошибка перемотки страниц")
+		return
+	}
+
+	// Это редактирование старого сообщения
+	h.sendOrEditRequests(query.Message.Chat.ID, query.Message.MessageID, page, true)
+}
+
+// sendOrEditRequests - вывод списка заявок
+func (h *Handlers) sendOrEditRequests(chatID int64, messageID int, page int, isEdit bool) {
 	var requests []models.Request
 	var total int64
 
-	// Получаем общее число заявок
 	database.DB.Model(&models.Request{}).Count(&total)
 
-	// Получаем заявки на текущую страницу (для пагинации)
 	offset := page * requestsPerPage
 	result := database.DB.Preload("Product").
 		Order("created_at DESC").
@@ -50,36 +75,33 @@ func (h *Handlers) handleRequests(message *tgbotapi.Message, page int) {
 
 	if result.Error != nil {
 		log.Printf("Error fetching requests: %v", result.Error)
-		h.bot.SendMessage(message.Chat.ID, "Ошибка при получении заявок из базы данных!")
+		h.bot.SendMessage(chatID, "Ошибка при получении заявок из базы данных!")
 		return
 	}
 
-	if len(requests) == 0 {
-		text := "Заявок пока нет."
-		h.bot.SendMessage(message.Chat.ID, text)
+	if len(requests) == 0 && !isEdit {
+		h.bot.SendMessage(chatID, "Заявок пока нет.")
 		return
 	}
 
-	// Формируем сообщение
-	text := fmt.Sprintf("**Заявки** (страница %d)\n\n", page+1)
+	text := fmt.Sprintf("**📋 Список заявок** (Стр. %d)\n\n", page+1)
 
-	for i, req := range requests {
+	for _, req := range requests {
 		productName := "Не указан"
 		if req.Product != nil {
 			productName = req.Product.Title
 		}
 
-		text += fmt.Sprintf("**Заявка** #%d**\n", offset+i+1)
+		text += fmt.Sprintf("**Заявка #%d**\n", req.ID)
 		text += fmt.Sprintf("👤 Имя: %s\n", req.Name)
-		text += fmt.Sprintf("📞 Телефон: %s\n", req.Phone)
+		text += fmt.Sprintf("📞 Тел: `%s`\n", req.Phone)
 
 		if req.Email != "" {
 			text += fmt.Sprintf("📧 Email: %s\n", req.Email)
 		}
-		text += fmt.Sprintf("📝 Почта: %s\n", req.Email)
 
 		if req.Description != "" {
-			text += fmt.Sprintf("📝 Описание: %s\n", req.Description)
+			text += fmt.Sprintf("📝 Инфо: %s\n", req.Description)
 		}
 
 		text += fmt.Sprintf("🛍️ Товар: %s\n", productName)
@@ -93,52 +115,40 @@ func (h *Handlers) handleRequests(message *tgbotapi.Message, page int) {
 
 	text += fmt.Sprintf("Страница %d из %d", page+1, totalPages)
 
+	var keyboard *tgbotapi.InlineKeyboardMarkup
 	if totalPages > 1 {
-		keyboard := h.createPaginationKeyboard(page, int(total))
-		h.bot.SendMessageWithKeyboard(message.Chat.ID, text, keyboard)
+		kb := h.createPaginationKeyboard(page, int(total))
+		keyboard = &kb
+	}
+
+	if isEdit {
+		h.bot.EditMessage(chatID, messageID, text, keyboard)
 	} else {
-		h.bot.SendMessage(message.Chat.ID, text)
+		if keyboard != nil {
+			h.bot.SendMessageWithKeyboard(chatID, text, *keyboard)
+		} else {
+			h.bot.SendMessage(chatID, text)
+		}
 	}
 }
 
-// Обработчик коллбэка для пагинации
-func (h *Handlers) handleRequestsCallback(query *tgbotapi.CallbackQuery) {
-	data := query.Data
-	pageStr := data[14:] // "requests_page_123"
-	page, err := strconv.Atoi(pageStr)
-	if err != nil {
-		h.bot.SendMessage(query.Message.Chat.ID, "❌ Ошибка перемотки страниц")
-		return
-	}
-
-	// Используем уже существующее сообщение для обновления
-	h.handleRequests(query.Message, page)
-}
-
-// Обработчик неизвестной команды
+// handleUnknown - Обработка неизвестной команды
 func (h *Handlers) handleUnknown(message *tgbotapi.Message) {
-	text := "❌ Неизвестная команда. Используйте /start для просмотра доступных команд."
-	h.bot.SendMessage(message.Chat.ID, text)
+	h.bot.SendMessage(message.Chat.ID, "❌ Неизвестная команда. Нажмите '❓ Помощь' для меню.")
 }
 
-// Обработчик создания клавиатуры
+// createPaginationKeyboard - создание клавиатуры для пагинации
 func (h *Handlers) createPaginationKeyboard(currentPage int, totalItems int) tgbotapi.InlineKeyboardMarkup {
 	var rows [][]tgbotapi.InlineKeyboardButton
-
 	maxPage := (totalItems + requestsPerPage - 1) / requestsPerPage
-	if maxPage <= 1 {
-		return tgbotapi.InlineKeyboardMarkup{}
-	}
 
 	var buttons []tgbotapi.InlineKeyboardButton
 
-	// Кнопка "Назад"
 	if currentPage > 0 {
 		buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData("⬅️ Назад",
 			fmt.Sprintf("requests_page_%d", currentPage-1)))
 	}
 
-	// Кнопка "Вперёд"
 	if currentPage < maxPage-1 {
 		buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData("Вперёд ➡️",
 			fmt.Sprintf("requests_page_%d", currentPage+1)))

@@ -21,7 +21,7 @@ func (h *Handler) CreateRequest(c *gin.Context) {
 	// Валидация входных данных
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Неверные данные заявки: имя и телефон обязательны!",
+			"message": "Неверные данные заявки: имя и телефон обязательны!",
 		})
 		return
 	}
@@ -29,7 +29,7 @@ func (h *Handler) CreateRequest(c *gin.Context) {
 	// Простая валидация телефона (минимум 10 цифр)
 	if len(input.Phone) < 10 {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Телефон должен содержать минимум 10 цифр",
+			"message": "Телефон должен содержать минимум 10 цифр",
 		})
 		return
 	}

@@ -53,7 +53,7 @@ function productHtml(p) {
     const title = escapeHtml(p.title ?? p.name ?? 'Без названия');
     const desc = escapeHtml(p.description ?? '');
     const imgIndex = id && !isNaN(id) ? id : 1;
-    const img = `images/${imgIndex}.jpg`;
+    const img = `images/products/${imgIndex}.jpg`;
 
     return `
         <div class="product-card">

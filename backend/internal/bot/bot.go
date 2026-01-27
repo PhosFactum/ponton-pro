@@ -1,3 +1,4 @@
+// AI-helped code
 package bot
 
 import (
@@ -17,6 +18,7 @@ type Handlers struct {
 	bot *Bot
 }
 
+// NewBot - Экземпляр нового бота
 func NewBot(token string) (*Bot, error) {
 	api, err := tgbotapi.NewBotAPI(token)
 	if err != nil {
@@ -33,7 +35,10 @@ func NewBot(token string) (*Bot, error) {
 	return bot, nil
 }
 
+// Start - меню с кнопками
 func (b *Bot) Start() {
+	b.setBotCommands()
+
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
@@ -47,28 +52,55 @@ func (b *Bot) Start() {
 			continue
 		}
 
-		// Логируем ID чата, чтобы узнать его
-		log.Printf("[%s] ID чата: %d | Текст: %s", update.Message.From.UserName,
-			update.Message.Chat.ID, update.Message.Text)
+		// Логируем сообщения
+		log.Printf("[TG MSG] From: %s | Text: %s", update.Message.From.UserName, update.Message.Text)
 
 		b.handleMessage(update.Message)
 	}
 }
 
-func (b *Bot) handleMessage(message *tgbotapi.Message) {
-	switch message.Command() { // Тут прописывать команды боту
-	case "start":
-		b.handlers.handleStart(message)
-	case "test":
-		b.handlers.handleTest(message)
-	case "requests":
-		b.handlers.handleRequests(message, 0) // С первой странички
-	default:
-		b.handlers.handleUnknown(message)
+// setBotCommands - настройка выпадающего меню команд
+func (b *Bot) setBotCommands() {
+	commands := []tgbotapi.BotCommand{
+		{Command: "start", Description: "Главное меню / Помощь"},
+		{Command: "requests", Description: "Список заявок"},
+	}
+
+	cfg := tgbotapi.NewSetMyCommands(commands...)
+	if _, err := b.api.Request(cfg); err != nil {
+		log.Printf("Ошибка настройки команд меню: %v", err)
 	}
 }
 
-// SendNessage - базовая отправка текста в чат
+// handleMessage - обработка сообщения через / и с кнопок
+func (b *Bot) handleMessage(message *tgbotapi.Message) {
+	// 1. Обработка команд (через слэш /)
+	if message.IsCommand() {
+		switch message.Command() {
+		case "start":
+			b.handlers.handleStart(message)
+		case "test":
+			b.handlers.handleTest(message)
+		case "requests":
+			b.handlers.handleRequests(message, 0)
+		default:
+			b.handlers.handleUnknown(message)
+		}
+		return
+	}
+
+	// 2. Обработка НИЖНИХ КНОПОК (Reply Keyboard)
+	switch message.Text {
+	case "📋 Заявки":
+		b.handlers.handleRequests(message, 0)
+	case "❓ Помощь":
+		// Кнопка Помощь делает то же самое, что и /start
+		b.handlers.handleStart(message)
+	default:
+	}
+}
+
+// SendMessage - простая отправка
 func (b *Bot) SendMessage(chatID int64, text string) {
 	msg := tgbotapi.NewMessage(chatID, text)
 	msg.ParseMode = "Markdown"
@@ -78,23 +110,7 @@ func (b *Bot) SendMessage(chatID int64, text string) {
 	}
 }
 
-// EditMessage - изменение текста и клавиатуры для существующего сообщения
-func (b *Bot) EditMessage(chatID int64, messageID int, text string,
-	keyboard *tgbotapi.InlineKeyboardMarkup) {
-	msg := tgbotapi.NewEditMessageText(chatID, messageID, text)
-	msg.ParseMode = "Markdown"
-
-	if keyboard != nil {
-		msg.ReplyMarkup = keyboard
-	}
-
-	_, err := b.api.Send(msg)
-	if err != nil {
-		log.Printf("Error editing message %d in chat %d: %v", messageID, chatID, err)
-	}
-}
-
-// SendMessageWithKeyboard - отправка с кнопками
+// SendMessageWithKeyboard - отправка с INLINE клавиатурой (под сообщением)
 func (b *Bot) SendMessageWithKeyboard(chatID int64, text string, keyboard tgbotapi.InlineKeyboardMarkup) {
 	msg := tgbotapi.NewMessage(chatID, text)
 	msg.ReplyMarkup = keyboard
@@ -105,32 +121,49 @@ func (b *Bot) SendMessageWithKeyboard(chatID int64, text string, keyboard tgbota
 	}
 }
 
-// Обработчик коллбэков для пагинации
+// SendMessageWithReplyKeyboard - отправка с НИЖНЕЙ клавиатурой (кнопки меню)
+func (b *Bot) SendMessageWithReplyKeyboard(chatID int64, text string, keyboard tgbotapi.ReplyKeyboardMarkup) {
+	msg := tgbotapi.NewMessage(chatID, text)
+	msg.ReplyMarkup = keyboard
+	msg.ParseMode = "Markdown"
+	_, err := b.api.Send(msg)
+	if err != nil {
+		log.Printf("Error sending message with reply keyboard: %v", err)
+	}
+}
+
+// EditMessage - редактирование сообщения (для пагинации)
+func (b *Bot) EditMessage(chatID int64, messageID int, text string, keyboard *tgbotapi.InlineKeyboardMarkup) {
+	msg := tgbotapi.NewEditMessageText(chatID, messageID, text)
+	msg.ParseMode = "Markdown"
+	if keyboard != nil {
+		msg.ReplyMarkup = keyboard
+	}
+	_, err := b.api.Send(msg)
+	if err != nil {
+		log.Printf("Error editing message: %v", err)
+	}
+}
+
+// HandleCallback - обработка нажатий кнопок "Вперед/Назад"
 func (b *Bot) HandleCallback(query *tgbotapi.CallbackQuery) {
 	data := query.Data
-	// log.Printf("Callback received: %s", data)   // Для отладки
-
-	// Обработка пагинации заявок
 	if len(data) > 14 && data[:14] == "requests_page_" {
 		b.handlers.handleRequestsCallback(query)
 	}
-
 	callback := tgbotapi.NewCallback(query.ID, "")
 	b.api.Request(callback)
 }
 
-// SendNewRequestNotification - отправка уведомления о новом заказе
+// SendNewRequestNotification - уведомление о новом заказе
 func (b *Bot) SendNewRequestNotification(chatID int64, req models.Request) {
 	if chatID == 0 {
-		log.Printf("AdminChatID не выбран, уведомление не будет отправлено!")
 		return
 	}
-
 	productName := "Не выбран"
 	if req.Product != nil {
 		productName = req.Product.Title
 	}
-
 	text := fmt.Sprintf(
 		"🔥 **НОВАЯ ЗАЯВКА!** 🔥\n\n"+
 			"👤 **Имя:** %s\n"+
@@ -139,12 +172,7 @@ func (b *Bot) SendNewRequestNotification(chatID int64, req models.Request) {
 			"🛍️ **Товар:** %s\n"+
 			"📝 **Комментарий:** %s\n\n"+
 			"#заявка #new",
-		req.Name,
-		req.Phone,
-		req.Email,
-		productName,
-		req.Description,
+		req.Name, req.Phone, req.Email, productName, req.Description,
 	)
-
 	b.SendMessage(chatID, text)
 }
