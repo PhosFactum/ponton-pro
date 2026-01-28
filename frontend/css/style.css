@@ -76,7 +76,7 @@ body {
 
 /* Приветственный блок */
 .hero {
-    background: url("../images/0.jpg") center/cover no-repeat;
+    background: url("../images/intro.jpg") center/cover no-repeat;
     min-height: 70vh;
     display: flex;
     align-items: center;
@@ -413,6 +413,7 @@ body {
 }
 
 .footer-left p {
+    white-space: nowrap;
     margin: 0;
     font-size: 0.9rem;
     opacity: 0.7;
@@ -427,17 +428,21 @@ body {
 }
 
 .footer-text {
-    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
 }
 
-.footer-text p {
-    margin: 0.25rem 0;
+.footer-text p:first-child {
+    order: -1
+    margin-bottom: 6px;
     font-size: 0.95rem;
+    opacity: 0.8;
 }
 
 .footer-text strong {
-    font-size: 1.1rem;
     color: #64b5f6;
+    display: block;
 }
 
 .social-icons {
@@ -577,7 +582,10 @@ body {
     }
     
     .footer-text {
-        text-align: right;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 6px;
     }
     
     .notification {
