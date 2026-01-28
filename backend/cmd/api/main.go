@@ -8,7 +8,6 @@ import (
 	"github.com/PhosFactum/TechnoLotos/backend/internal/database"
 	"github.com/PhosFactum/TechnoLotos/backend/internal/handlers"
 	"github.com/PhosFactum/TechnoLotos/backend/internal/middleware"
-	"github.com/PhosFactum/TechnoLotos/backend/internal/models"
 
 	"github.com/gin-gonic/gin"
 )
@@ -48,9 +47,11 @@ func main() {
 	// 6. Инициализируем роутер Gin
 	router := gin.Default()
 
+	router.SetTrustedProxies([]string{"127.0.0.1", "localhost"})
+
 	// CORS для фронтенда
 	router.Use(func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "http://127.0.0.1:5500")
+		c.Header("Access-Control-Allow-Origin", "http://148.253.212.163:3000")
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Authorization")
 		c.Header("Access-Control-Allow-Credentials", "true")
@@ -73,21 +74,10 @@ func main() {
 		api.GET("/health", h.HealthCheck)      // Проверка состояния сервера
 		api.GET("/products", h.GetProducts)    // Каталог товаров
 		api.POST("/requests", h.CreateRequest) // Создание заявки
-
-		// ВРЕМЕННЫЙ ЭНДПОЙНТ ДЛЯ ПРОСМОТРА ВСЕХ ЗАЯВОК
-		api.GET("/debug/requests", func(c *gin.Context) {
-			var requests []models.Request
-			database.DB.Find(&requests)
-
-			c.JSON(200, gin.H{
-				"count":    len(requests),
-				"requests": requests,
-			})
-		})
 	}
 
 	// Запускаем сервер на порту 8080
-	log.Printf("Сервер запускается на http://localhost:%s", cfg.Port)
+	log.Printf("Сервер запускается на http://%s:%s", cfg.IP, cfg.Port)
 	if err := router.Run(":" + cfg.Port); err != nil {
 		log.Fatal("Ошибка запуска сервера:", err)
 	}

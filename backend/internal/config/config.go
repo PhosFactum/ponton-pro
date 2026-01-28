@@ -10,6 +10,7 @@ import (
 )
 
 type Config struct {
+	IP	    string
 	Port        string
 	DatabaseUrl string
 	Environment string
@@ -30,6 +31,7 @@ func Load() *Config {
 	}
 
 	return &Config{
+		IP: 	     getEnv("IP", "localhost"),
 		Port:        getEnv("PORT", "8080"),
 		DatabaseUrl: getEnv("DATABASE_URL", "lotos.db"),
 		Environment: getEnv("ENVIRONMENT", "development"),

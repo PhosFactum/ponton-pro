@@ -18,9 +18,9 @@ func Connect(cfg *config.Config) error {
 	var dbName string
 
 	if cfg.Environment == "production" {
-		dbName = "/var/lib/TechnoLotos/production.db"
+		dbName = "production.db"
 	} else {
-		dbName = "lotos.db"
+		dbName = "test.db"
 
 		// Удаляем тестовую БД при каждому запуске development
 		if _, err := os.Stat(dbName); err == nil {

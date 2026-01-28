@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:8080/api';
+const API_BASE = 'http://148.253.212.163:8080/api';
 
 document.addEventListener('DOMContentLoaded', () => {
     initUI();
