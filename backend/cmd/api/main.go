@@ -51,7 +51,7 @@ func main() {
 
 	// CORS для фронтенда
 	router.Use(func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "http://148.253.212.163:3000")
+		c.Header("Access-Control-Allow-Origin", "http://ponton-pro.ru")
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Authorization")
 		c.Header("Access-Control-Allow-Credentials", "true")
