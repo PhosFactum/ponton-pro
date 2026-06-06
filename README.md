@@ -1,6 +1,27 @@
 # Ponton-pro
-An application on Golang and simple frontend for my father's business
 
-## Result on link:
-### ponton-pro.ru
+Веб-приложение для бизнеса моего отца. Бэкенд на Go, простой фронтенд (HTML/CSS/JS).
 
+**Сайт:** [ponton-pro.ru](https://ponton-pro.ru)
+
+---
+
+## 📋 Требования
+
+- **Go** 1.21 или выше
+- **Node.js** (для `npx`, через него я запускал фронтенд)
+
+---
+
+## 🚀 Запуск приложения
+
+### Локальный запуск (скрипт run.sh)
+
+Самый простой способ — использовать готовый скрипт `run.sh`.
+
+```bash
+# Дать права на выполнение
+chmod +x run.sh
+
+# Запустить
+./run.sh
