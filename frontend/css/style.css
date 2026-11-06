@@ -430,6 +430,8 @@ body {
 .footer-text {
     display: flex;
     flex-direction: column;
+    color: #ffffff;
+    text-decoration: none;
     align-items: flex-end;
 }
 
@@ -526,6 +528,7 @@ body {
     
     .header-phone {
         margin-top: 0;
+	color: #ffffff;
     }
     
     .hero-content {
@@ -672,4 +675,20 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
     background: #444;
+}
+
+.header-phone,
+.header-phone a,
+.footer-text strong,
+.footer-text a,
+a[href^="tel"] {
+	color: #ffffff !important;
+	text-decoration: none !important;
+}
+
+/* убираем поведение iOS */
+a[href^="tel"]:hover,
+a[href^="tel"]:active,
+a[href^="tel"]:visited {
+	color: #ffffff !important;
 }
